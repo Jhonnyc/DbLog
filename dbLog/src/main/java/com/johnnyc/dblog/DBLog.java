@@ -395,6 +395,71 @@ public class DBLog {
         }
     }
 
+    // Warning
+
+    public static <T> void w(String tag, String msg) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, tag, msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, null, tag, msg, null);
+        }
+    }
+
+    public static <T> void w(Class<?> clazz, String msg) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, clazz.getSimpleName(), msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, clazz, null, msg, null);
+        }
+    }
+
+    public static <T> void w(Object obj, String msg) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, obj.getClass().getSimpleName(), msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, obj.getClass(), null, msg, null);
+        }
+    }
+
+    public static <T> void w(String tag, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, tag, msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, null, tag, String.format(msg, args), null);
+        }
+    }
+
+    public static <T> void w(String tag, Exception exception, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, tag, msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, null, tag, String.format(msg, args), exception);
+        }
+    }
+
+    public static <T> void w(Class<?> clazz, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, clazz.getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, clazz, null, String.format(msg, args), null);
+        }
+    }
+
+    public static <T> void w(Class<?> clazz, Exception exception, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, clazz.getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, clazz, null, String.format(msg, args), exception);
+        }
+    }
+
+    public static <T> void w(Object obj, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, obj.getClass().getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, obj.getClass(), null, String.format(msg, args), null);
+        }
+    }
+
+    public static <T> void w(Object obj, Exception exception, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.WARNING, obj.getClass().getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.WARNING)) {
+            getInstance().addLog(LogLevel.WARNING, obj.getClass(), null, String.format(msg, args), exception);
+        }
+    }
+
     /*******************************
      *******************************
      ******* Private Methods *******
