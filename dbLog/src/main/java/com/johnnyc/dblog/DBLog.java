@@ -460,6 +460,71 @@ public class DBLog {
         }
     }
 
+    // Error
+
+    public static <T> void e(String tag, String msg) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, tag, msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, null, tag, msg, null);
+        }
+    }
+
+    public static <T> void e(Class<?> clazz, String msg) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, clazz.getSimpleName(), msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, clazz, null, msg, null);
+        }
+    }
+
+    public static <T> void e(Object obj, String msg) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, obj.getClass().getSimpleName(), msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, obj.getClass(), null, msg, null);
+        }
+    }
+
+    public static <T> void e(String tag, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, tag, msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, null, tag, String.format(msg, args), null);
+        }
+    }
+
+    public static <T> void e(String tag, Exception exception, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, tag, msg);
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, null, tag, String.format(msg, args), exception);
+        }
+    }
+
+    public static <T> void e(Class<?> clazz, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, clazz.getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, clazz, null, String.format(msg, args), null);
+        }
+    }
+
+    public static <T> void e(Class<?> clazz, Exception exception, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, clazz.getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, clazz, null, String.format(msg, args), exception);
+        }
+    }
+
+    public static <T> void e(Object obj, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, obj.getClass().getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, obj.getClass(), null, String.format(msg, args), null);
+        }
+    }
+
+    public static <T> void e(Object obj, Exception exception, String msg, T... args) throws NullPointerException {
+        logToLogcat(LogLevel.ERROR, obj.getClass().getSimpleName(), String.format(msg, args));
+        if (Configuration.getLevelsToLog().contains(LogLevel.ERROR)) {
+            getInstance().addLog(LogLevel.ERROR, obj.getClass(), null, String.format(msg, args), exception);
+        }
+    }
+
     /*******************************
      *******************************
      ******* Private Methods *******
