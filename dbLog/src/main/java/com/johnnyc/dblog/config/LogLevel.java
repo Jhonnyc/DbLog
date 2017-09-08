@@ -10,7 +10,8 @@ public enum LogLevel {
 	DEBUG("Debug"),
 	INFO("Info"),
 	WARNING("Warning"),
-	ERROR("Error");
+	ERROR("Error"),
+	WTF("WTF"); // What a teriible failure - for cases that should never happen
 	
 	// Enum Variables
 	private String mName;
