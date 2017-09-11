@@ -7,6 +7,7 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.os.Handler;
 import android.provider.BaseColumns;
 import android.util.Log;
 
@@ -14,16 +15,26 @@ import com.johnnyc.dblog.config.LogConfiguration;
 import com.johnnyc.dblog.config.LogLevel;
 import com.johnnyc.dblog.utils.Utils;
 
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DBLog {
+
+    // Status enum
+    public enum Status {
+        PASS, QUEUED, FAILED, EMPTY
+    }
 
     // Private variables
     private static final String TAG = DBLog.class.getSimpleName();
 
     // Class Variables
+    private static Queue<ContentValues> mRows = new LinkedList<ContentValues>();
+    private Status mStatus;
     private static long mInstantiationTime;
     private AtomicInteger mOpenCounter = new AtomicInteger();
+    private AtomicInteger mGatherDataLocker = new AtomicInteger();
     private static SQLiteOpenHelper mDatabaseHelper;
     private static DBLog mInstance = null;
     private SQLiteDatabase mDatabase;
@@ -46,10 +57,11 @@ public class DBLog {
     }
 
     private DBLog(final LogLevel[] triggerOnLevels,
-                  final boolean resetAfterTrigger, final OnAfterCrash onAfterCrash) {
+                  final boolean resetAfterTrigger, final OnAfterCrash onAfterCrash, final Handler handler) {
         new Thread(new Runnable() {
             @Override
             public void run() {
+                mGatherDataLocker.incrementAndGet();
                 SQLiteDatabase db = null;
                 try {
                     db = getInstance().openDatabase();
@@ -63,7 +75,7 @@ public class DBLog {
                     if (cursor != null &&
                             cursor.moveToFirst() &&
                             cursor.getCount() > 0) {
-                        StringBuilder data = new StringBuilder();
+                        final StringBuilder data = new StringBuilder();
                         try {
                             do {
                                 DatePickerDialog f;
@@ -120,35 +132,46 @@ public class DBLog {
                             } while (cursor.moveToNext());
                         } finally {
                             cursor.close();
+                            flush();
                         }
-                        onAfterCrash.doAfterCrash(data);
+                        if(handler != null) {
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    onAfterCrash.doAfterCrash(data);
+                                }
+                            });
+                        }
                         if (resetAfterTrigger) {
                             reset(System.currentTimeMillis());
                         }
                     }
                 } catch (SQLException ex) {
                     Log.e(TAG, ex.getMessage());
+                } finally {
+                    mGatherDataLocker.decrementAndGet();
                 }
             }
         }).start();
     }
 
-    public synchronized static void initialize(Context context) {
-        if (mInstance == null) {
-            mInstantiationTime = System.currentTimeMillis();
-            mInstance = new DBLog();
-            mDatabaseHelper = new DBLogDatabase(context);
-        }
-    }
-
     public synchronized static void initialize(Context context,
                                                LogLevel[] triggerOnLevels,
                                                boolean resetAfterTrigger,
-                                               OnAfterCrash onAfterCrash) {
+                                               OnAfterCrash onAfterCrash,
+                                               Handler handler) {
+        //if (mInstance == null) {
+            mInstantiationTime = System.currentTimeMillis();
+            mDatabaseHelper = new DBLogDatabase(context);
+            mInstance = new DBLog(triggerOnLevels, resetAfterTrigger, onAfterCrash, handler);
+        //}
+    }
+
+    public synchronized static void initialize(Context context) {
         if (mInstance == null) {
             mInstantiationTime = System.currentTimeMillis();
-            mInstance = new DBLog(triggerOnLevels, resetAfterTrigger, onAfterCrash);
             mDatabaseHelper = new DBLogDatabase(context);
+            mInstance = new DBLog();
         }
     }
 
@@ -570,10 +593,36 @@ public class DBLog {
         }
     }
 
-    private boolean addLog(LogLevel level, Class<?> clazz, String tag, String messege, Exception exception) {
+    private Status flush() {
+        Status status = Status.EMPTY;
+        long rowId = -1;
+        SQLiteDatabase db = null;
+        for (int i = 0; i < mRows.size(); i++) {
+            ContentValues row = mRows.poll();
+            if (row != null) {
+                try {
+                    db = getInstance().openDatabase();
+                    rowId = db.insert(Column.TABLE_LOGS, null, row);
+
+                    // If it fails once fail the entire process
+                    if (rowId > -1 && !status.equals(Status.FAILED)) {
+                        status = Status.PASS;
+                    } else {
+                        status = Status.FAILED;
+                    }
+                } catch (Exception e) {
+                    return Status.FAILED;
+                }
+            }
+        }
+
+        return status;
+    }
+
+    private Status addLog(LogLevel level, Class<?> clazz, String tag, String messege, Exception exception) {
         // method variables
-        long rowId;
-        boolean pass = false;
+        long rowId = -1;
+        Status status = Status.EMPTY;
         SQLiteDatabase db = null;
         ContentValues row = null;
         long epochTime = System.currentTimeMillis();
@@ -599,12 +648,17 @@ public class DBLog {
                 row.put(Column.EXCEPTION_DATA, Utils.getStackTraceAsString(exception));
             }
 
-            rowId = db.insert(Column.TABLE_LOGS, null, row);
+            if (mGatherDataLocker.get() == 1) {
+                status = Status.QUEUED;
+                mRows.add(row);
+            } else {
+                rowId = db.insert(Column.TABLE_LOGS, null, row);
+            }
             if (rowId > -1) {
-                pass = true;
+                status = Status.PASS;
             }
         } catch (SQLException ex) {
-            pass = false;
+            status = Status.FAILED;
             Log.e(TAG, ex.getMessage());
         } finally {
             try {
@@ -616,7 +670,7 @@ public class DBLog {
                 Log.e(TAG, ex.getMessage());
             }
         }
-        return pass;
+        return status;
     }
 
     private String makePlaceholders(int len) {
