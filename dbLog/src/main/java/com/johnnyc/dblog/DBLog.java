@@ -587,6 +587,8 @@ public class DBLog {
             case WARNING:
                 Log.w(tag, msg);
                 break;
+            case WTF:
+                Log.wtf(tag, msg);
             default:
                 Log.e(tag, msg);
                 break;
