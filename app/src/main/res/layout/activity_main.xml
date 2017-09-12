@@ -14,4 +14,13 @@
         android:layout_alignParentLeft="true"
         android:id="@+id/logs"/>
 
+
+    <Button
+        android:id="@+id/btn_add_log"
+        android:text="Add Log"
+        android:layout_below="@id/logs"
+        android:layout_width="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_height="wrap_content" />
+
 </RelativeLayout>
