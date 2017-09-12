@@ -17,24 +17,27 @@ import com.johnnyc.dblog.utils.Utils;
 
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DBLog {
 
+
+
     // Status enum
     public enum Status {
-        PASS, QUEUED, FAILED, EMPTY
+        PASS, QUEUED, FAILED, EMPTY;
     }
-
     // Private variables
     private static final String TAG = DBLog.class.getSimpleName();
 
     // Class Variables
     private static Queue<ContentValues> mRows = new LinkedList<ContentValues>();
+    private volatile AtomicBoolean mQueueing = new AtomicBoolean(false);
     private Status mStatus;
     private static long mInstantiationTime;
-    private AtomicInteger mOpenCounter = new AtomicInteger();
-    private AtomicInteger mGatherDataLocker = new AtomicInteger();
+    private volatile AtomicInteger mOpenCounter = new AtomicInteger();
+    private volatile static AtomicInteger mGatherDataLocker = new AtomicInteger();
     private static SQLiteOpenHelper mDatabaseHelper;
     private static DBLog mInstance = null;
     private SQLiteDatabase mDatabase;
@@ -61,7 +64,6 @@ public class DBLog {
         new Thread(new Runnable() {
             @Override
             public void run() {
-                mGatherDataLocker.incrementAndGet();
                 SQLiteDatabase db = null;
                 try {
                     db = getInstance().openDatabase();
@@ -150,6 +152,7 @@ public class DBLog {
                     Log.e(TAG, ex.getMessage());
                 } finally {
                     mGatherDataLocker.decrementAndGet();
+                    mQueueing.set(false);
                 }
             }
         }).start();
@@ -161,6 +164,7 @@ public class DBLog {
                                                OnAfterCrash onAfterCrash,
                                                Handler handler) {
         //if (mInstance == null) {
+        mGatherDataLocker.incrementAndGet();
             mInstantiationTime = System.currentTimeMillis();
             mDatabaseHelper = new DBLogDatabase(context);
             mInstance = new DBLog(triggerOnLevels, resetAfterTrigger, onAfterCrash, handler);
@@ -169,6 +173,7 @@ public class DBLog {
 
     public synchronized static void initialize(Context context) {
         if (mInstance == null) {
+            mGatherDataLocker.incrementAndGet();
             mInstantiationTime = System.currentTimeMillis();
             mDatabaseHelper = new DBLogDatabase(context);
             mInstance = new DBLog();
@@ -618,6 +623,8 @@ public class DBLog {
             }
         }
 
+        mQueueing.set(false);
+
         return status;
     }
 
@@ -651,10 +658,16 @@ public class DBLog {
             }
 
             if (mGatherDataLocker.get() == 1) {
+                mQueueing.set(true);
                 status = Status.QUEUED;
                 mRows.add(row);
             } else {
-                rowId = db.insert(Column.TABLE_LOGS, null, row);
+                if(mQueueing.get()) {
+                    status = Status.QUEUED;
+                    mRows.add(row);
+                } else {
+                    rowId = db.insert(Column.TABLE_LOGS, null, row);
+                }
             }
             if (rowId > -1) {
                 status = Status.PASS;
